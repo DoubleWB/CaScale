@@ -1,0 +1,5 @@
+Files for running the actual load cell hardware.
+
+LoadCellDemo is a small experimental check of hardware functionality.
+
+LoadCellSetup is a more nuanced check of setting up the scale to measure in grams, using a 30.00 gram weight.
