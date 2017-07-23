@@ -14,7 +14,8 @@ class Recipe {
     void display_recipe( Goldelox_Serial_4DLib *, int);
     int get_bean_grams() { return bean_grams; };
     int get_water_grams() { return water_grams; };
-    void set_brew_state();
+    void set_brew_state (BrewState b) { state = b; };
+    BrewState get_brew_state() { return state; };
   private:
     int bean_grams;
     int water_grams;
@@ -27,20 +28,24 @@ void Recipe::display_recipe( Goldelox_Serial_4DLib * screen, int seconds_passed)
   screen->txt_MoveCursor(3, 0); //Make sure we move the position in whatever unit we were using before
   screen->txt_Height(1);
   screen->txt_Width(1);
-  /*if (seconds_passed = -2) {
-    screen->putstr("Measure Beans!");
-  }
-  if (seconds_passed = -1) {
-    screen->putstr("Add Equipment!");
-  }*/
-  if (seconds_passed == 0) {
-    screen->putstr("Begin Pouring!");
-  }
-  else if (seconds_passed <= time_in_seconds) {
-    screen->putstr("Keep Pouring!");
-  }
-  else {
-    screen->putstr("STOP Pouring!");
+  switch (state) {
+    case beans:
+      screen->putstr("Measure Beans!");
+      break;
+    case equipment:
+      screen->putstr("Press Button When Ready!");
+      break;
+    case pour:
+      if (seconds_passed == 0) {
+        screen->putstr("Begin Pouring!");
+      }
+      else if (seconds_passed <= time_in_seconds) {
+        screen->putstr("Keep Pouring!");
+      }
+      else {
+        screen->putstr("STOP Pouring!");
+      }
+      break;
   }
   screen->txt_Height(3) ;
   screen->txt_Width(3) ;
@@ -81,10 +86,10 @@ void setup() {
   screen.txt_Width(3) ;
 
   //Set Up Button
-  digitalRead(button_pin);
 }
 
 void loop() {
+  //Basic Readout - Should be everpresent
   float reading = load_cell.get_units(2);
   if ((reading >= (last_reading + .05)) || (reading <= (last_reading -.05))){
     char buffer[8];
@@ -93,18 +98,33 @@ void loop() {
     screen.putstr(buffer);
     last_reading = reading;
   }
-  
-  if ((reading >= 1.0) && (first_tick == 0)) { //begin once appreciable amount of water is poured
-    first_tick = now();
+
+  //Recipe Instructions - should change as needed
+  switch (dummy.get_brew_state()) {
+    case beans:
+      if (reading >= dummy.get_bean_grams()) {
+        dummy.set_brew_state(equipment);
+      }
+      break;
+    case equipment:
+      if (digitalRead(button_pin) == LOW) {
+        load_cell.tare();
+        dummy.set_brew_state(pour);
+      }
+      break;
+    case pour:
+      if ((reading >= 1.0) && (first_tick == 0)) { //begin once appreciable amount of water is poured
+        first_tick = now();
+      }
+      break;
   }
-  
+
   if (first_tick == 0) {
     dummy.display_recipe(&screen, 0);
   }
   else {
     dummy.display_recipe(&screen, now() - first_tick);
   }
-  
 }
 
 void mycallback(int ErrCode, unsigned char Errorbyte)
