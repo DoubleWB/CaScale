@@ -5,6 +5,18 @@
 
 #define CALIBRATION_CONSTANT_GRAMS 1077.90 //Found using LoadCellSetup
 #define DisplaySerial Serial
+/*
+ * Load Cell Pins are:
+ *    DOUT in 3
+ *    SCK in 2
+ * LCD Pins Are:
+ *    TX into 0 (rx) Note: This must be unplugged for an upload to the arduino to work
+ *    RX into 1 (tx)
+ *    RES into 4 (include a 1 kilo-ohm resistor in this connection)
+ * Button Pins are:
+ *    SIGNAL PIN into 12
+ *    
+ */
 
 enum BrewState {beans, equipment, pour};
 
