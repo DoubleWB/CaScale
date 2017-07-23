@@ -28,22 +28,22 @@ void Recipe::display_recipe( Goldelox_Serial_4DLib * screen, int seconds_passed)
   screen->txt_MoveCursor(3, 0); //Make sure we move the position in whatever unit we were using before
   screen->txt_Height(1);
   screen->txt_Width(1);
-  switch (state) {
+  switch (state) { //Extra spaces so that text isn't left unpainted over
     case beans:
-      screen->putstr("Measure Beans!");
+      screen->putstr("Measure Beans!            ");
       break;
     case equipment:
-      screen->putstr("Press Button When Ready!");
+      screen->putstr("Press Button When Ready!  ");
       break;
     case pour:
       if (seconds_passed == 0) {
-        screen->putstr("Begin Pouring!");
+        screen->putstr("Begin Pouring!          ");
       }
       else if (seconds_passed <= time_in_seconds) {
-        screen->putstr("Keep Pouring!");
+        screen->putstr("Keep Pouring!           ");
       }
       else {
-        screen->putstr("STOP Pouring!");
+        screen->putstr("STOP Pouring!           ");
       }
       break;
   }
