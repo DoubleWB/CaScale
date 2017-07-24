@@ -103,7 +103,7 @@ void setup() {
 void loop() {
   //Basic Readout - Should be everpresent
   float reading = load_cell.get_units(2);
-  if ((reading >= (last_reading + .05)) || (reading <= (last_reading -.05))){
+  if ((reading >= (last_reading + .05)) || (reading <= (last_reading -.05))){ //Make sure that the scale has a noticeable change before changing the display, to prevent flickering 
     char buffer[8];
     dtostrf(reading, 6, 2, buffer);
     screen.txt_MoveCursor(2, 0) ;
