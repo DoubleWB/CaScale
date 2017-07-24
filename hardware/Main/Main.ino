@@ -19,10 +19,26 @@
  */
 
 enum BrewState {beans, equipment, pour};
+enum GrindLevel {very_course, course, medium_course, fine, espresso_fine}; 
+
+char * get_string(GrindLevel g) {
+  switch(g) {
+    case(very_course):
+      return "Very Course";
+    case(course):
+      return "Course";
+    case(medium_course):
+      return "Medium Course";
+    case(fine):
+      return "Fine";
+    case(espresso_fine):
+      return "Espresso Fine";
+  }
+}
 
 class Recipe {
   public:
-    Recipe (int bg, int wg, int s) : bean_grams(bg), water_grams(wg), time_in_seconds(s), state(beans){};
+    Recipe (int bg, int wg, int s, GrindLevel g) : bean_grams(bg), water_grams(wg), time_in_seconds(s), state(beans), grind(g){};
     void display_recipe( Goldelox_Serial_4DLib *, int);
     int get_bean_grams() { return bean_grams; };
     int get_water_grams() { return water_grams; };
@@ -33,26 +49,36 @@ class Recipe {
     int water_grams;
     int time_in_seconds;
     BrewState state;
+    GrindLevel grind;
 };
 
 
 void Recipe::display_recipe( Goldelox_Serial_4DLib * screen, int seconds_passed){
-  screen->txt_MoveCursor(3, 0); //Make sure we move the position in whatever unit we were using before
+  char buff[3]; //used to print int values to LCD;
+  screen->txt_MoveCursor(4, 0); //Make sure we move the position in whatever unit we were using before
   screen->txt_Height(1);
   screen->txt_Width(1);
   switch (state) { //Extra spaces so that text isn't left unpainted over
     case beans:
-      screen->putstr("Measure Beans!            ");
+      screen->putstr("Measure ");
+      screen->putstr(buff);
+      sprintf(buff, "%d", bean_grams);
+      screen->putstr("g of Beans!      ");
       break;
     case equipment:
-      screen->putstr("Press Button When Ready!  ");
+      screen->putstr("Grind ");
+      screen->putstr(get_string(grind));
+      screen->putstr(" and bush button when ready to brew");
       break;
     case pour:
       if (seconds_passed == 0) {
         screen->putstr("Begin Pouring!          ");
       }
       else if (seconds_passed <= time_in_seconds) {
-        screen->putstr("Keep Pouring!           ");
+        screen->putstr("Keep pouring to ");
+        sprintf(buff, "%d", water_grams);
+        screen->putstr(buff);
+        screen->putstr("g!           ");
       }
       else {
         screen->putstr("STOP Pouring!           ");
@@ -67,7 +93,7 @@ HX711 load_cell;
 //use Serial0 to communicate with the display.
 Goldelox_Serial_4DLib screen(&DisplaySerial);
 const int button_pin = 12;
-Recipe dummy(20, 300, 15);
+Recipe dummy(20, 300, 15, medium_course);
 
 float last_reading = -10.0;
 long first_tick = 0;
@@ -88,12 +114,12 @@ void setup() {
 
   // Set up Style of screen
   screen.gfx_ScreenMode(LANDSCAPE);
-  screen.gfx_BGcolour(WHITE) ; 
+  screen.gfx_BGcolour(BLACK) ; 
   screen.SSTimeout(0) ;
   screen.SSSpeed(0) ;
   screen.SSMode(0) ;
-  screen.txt_BGcolour(WHITE) ;
-  screen.txt_FGcolour(RED) ;
+  screen.txt_BGcolour(BLACK) ;
+  screen.txt_FGcolour(GREEN) ;
   screen.txt_Height(3) ;
   screen.txt_Width(3) ;
 
