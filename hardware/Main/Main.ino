@@ -3,7 +3,7 @@
 #include "Goldelox_Const4D.h"
 #include "Time.h"
 
-#define CALIBRATION_CONSTANT_GRAMS 1077.90 //Found using LoadCellSetup
+#define CALIBRATION_CONSTANT_GRAMS 1090 //Found using LoadCellSetup
 #define DisplaySerial Serial
 /*
  * Load Cell Pins are:
@@ -36,67 +36,113 @@ char * get_string(GrindLevel g) {
   }
 }
 
-class Recipe {
+class Step {
+  protected:
+    char * info;
   public:
-    Recipe (int bg, int wg, int s, GrindLevel g) : bean_grams(bg), water_grams(wg), time_in_seconds(s), state(beans), grind(g){};
-    void display_recipe( Goldelox_Serial_4DLib *, int);
-    int get_bean_grams() { return bean_grams; };
-    int get_water_grams() { return water_grams; };
-    void set_brew_state (BrewState b) { state = b; };
-    BrewState get_brew_state() { return state; };
-  private:
-    int bean_grams;
-    int water_grams;
-    int time_in_seconds;
-    BrewState state;
-    GrindLevel grind;
+    Step() : info("Default Text") {};
+    Step(char * i) : info(i) {};
+    virtual boolean add_to_display (Goldelox_Serial_4DLib * screen, double reading, int elapsed_seconds) { return true; };
+    void clear_from_display (Goldelox_Serial_4DLib * screen) {
+      screen->txt_MoveCursor(4, 0); //Make sure we move the position in whatever unit we were using before
+      screen->txt_Height(1);
+      screen->txt_Width(1);
+      screen->putstr("                                                                                "); // At least the length of a line haha
+      screen->txt_Height(3);
+      screen->txt_Width(3);
+    }
 };
 
+class WeightDoneStep : public Step {
+  public:
+    WeightDoneStep(int g, char * i): grams(g), Step(i) {}
+    boolean add_to_display (Goldelox_Serial_4DLib * screen, double reading, int elapsed_seconds) {
+      screen->txt_MoveCursor(4, 0); //Make sure we move the position in whatever unit we were using before
+      screen->txt_Height(1);
+      screen->txt_Width(1);
+      screen->putstr(Step::info);
+      screen->txt_Height(3);
+      screen->txt_Width(3);
+      
+      return (reading >= grams);
+    }
+  protected: 
+    double grams;  
+};
 
-void Recipe::display_recipe( Goldelox_Serial_4DLib * screen, int seconds_passed){
-  char buff[3]; //used to print int values to LCD;
-  screen->txt_MoveCursor(4, 0); //Make sure we move the position in whatever unit we were using before
-  screen->txt_Height(1);
-  screen->txt_Width(1);
-  switch (state) { //Extra spaces so that text isn't left unpainted over
-    case beans:
-      screen->putstr("Measure ");
-      screen->putstr(buff);
-      sprintf(buff, "%d", bean_grams);
-      screen->putstr("g of Beans!      ");
-      break;
-    case equipment:
-      screen->putstr("Grind ");
-      screen->putstr(get_string(grind));
-      screen->putstr(" and bush button when ready to brew");
-      break;
-    case pour:
-      if (seconds_passed == 0) {
-        screen->putstr("Begin Pouring!          ");
+class TimeDoneStep : public Step { 
+  public:
+    TimeDoneStep(int s, char * i): seconds(s), Step(i) {}
+    boolean add_to_display (Goldelox_Serial_4DLib * screen, double reading, int elapsed_seconds) {
+      screen->txt_MoveCursor(4, 0); //Make sure we move the position in whatever unit we were using before
+      screen->txt_Height(1);
+      screen->txt_Width(1);
+      screen->putstr(Step::info);
+      screen->txt_Height(3);
+      screen->txt_Width(3);
+
+      return (elapsed_seconds >= seconds);
+    }
+  protected:
+    int seconds;
+};
+
+class WeightTimeDoneStep : public WeightDoneStep {
+  public:
+    WeightTimeDoneStep(int g, int s, char * i): WeightDoneStep(g, i), seconds(s) {}
+    boolean add_to_display (Goldelox_Serial_4DLib * screen, double reading, int seconds_elapsed) {
+      screen->txt_MoveCursor(4, 0); //Make sure we move the position in whatever unit we were using before
+      screen->txt_Height(1);
+      screen->txt_Width(1);
+      screen->putstr(WeightDoneStep::info);
+      screen->txt_Height(3);
+      screen->txt_Width(3);
+
+      return (seconds_elapsed >= seconds) && (reading >= WeightDoneStep::grams);
+    }
+    private:
+      int seconds;
+};
+
+class Recipe {
+  public:
+    Recipe(): currentStep(0), numSteps(0) {}
+    void add_to_display (Goldelox_Serial_4DLib * screen, double reading, int seconds_elapsed) {
+      if (currentStep == numSteps) {
+        screen->txt_MoveCursor(4, 0); //Make sure we move the position in whatever unit we were using before
+        screen->txt_Height(1);
+        screen->txt_Width(1);
+        screen->putstr("                                                                  ");
+        screen->txt_Height(3);
+        screen->txt_Width(3);
       }
-      else if (seconds_passed <= time_in_seconds) {
-        screen->putstr("Keep pouring to ");
-        sprintf(buff, "%d", water_grams);
-        screen->putstr(buff);
-        screen->putstr("g!           ");
+      else if (steps[currentStep]->add_to_display(screen, reading, seconds_elapsed)) {
+        steps[currentStep]->clear_from_display(screen);
+        currentStep++;
       }
-      else {
-        screen->putstr("STOP Pouring!           ");
-      }
-      break;
-  }
-  screen->txt_Height(3) ;
-  screen->txt_Width(3) ;
-}
+    }
+    void add_step(Step* s) {
+      steps[numSteps] = s;
+      numSteps++;
+    }
+    int get_step() { return currentStep; }
+  private:
+    Step* steps[10]; //limiting at 10 steps right now
+    int currentStep;
+    int numSteps;
+};
 
 HX711 load_cell;
 //use Serial0 to communicate with the display.
 Goldelox_Serial_4DLib screen(&DisplaySerial);
 const int button_pin = 12;
-Recipe dummy(20, 300, 15, medium_course);
-
+Recipe dummy;
 float last_reading = -10.0;
-long first_tick = 0;
+long last_checkpoint = 0;
+int last_step = -1;
+WeightDoneStep w = WeightDoneStep(30, "30g of Beans!");
+WeightTimeDoneStep wt = WeightTimeDoneStep(30, 30, "30g Water for 30 Sec");  
+TimeDoneStep t = TimeDoneStep(10, "Wait 10 Seconds");
 
 void setup() {
   // Set up Scale
@@ -123,7 +169,9 @@ void setup() {
   screen.txt_Height(3) ;
   screen.txt_Width(3) ;
 
-  //Set Up Button
+  dummy.add_step(&w);
+  dummy.add_step(&wt);
+  dummy.add_step(&t);
 }
 
 void loop() {
@@ -136,33 +184,15 @@ void loop() {
     screen.putstr(buffer);
     last_reading = reading;
   }
-
+  
   //Recipe Instructions - should change as needed
-  switch (dummy.get_brew_state()) {
-    case beans:
-      if (reading >= dummy.get_bean_grams()) {
-        dummy.set_brew_state(equipment);
-      }
-      break;
-    case equipment:
-      if (digitalRead(button_pin) == LOW) {
-        load_cell.tare();
-        dummy.set_brew_state(pour);
-      }
-      break;
-    case pour:
-      if ((reading >= 1.0) && (first_tick == 0)) { //begin once appreciable amount of water is poured
-        first_tick = now();
-      }
-      break;
+  if(dummy.get_step() > last_step) { // make sure each step has it's own timing bracket
+    last_checkpoint = now(); 
+    last_step = dummy.get_step();
   }
-
-  if (first_tick == 0) {
-    dummy.display_recipe(&screen, 0);
-  }
-  else {
-    dummy.display_recipe(&screen, now() - first_tick);
-  }
+  
+  dummy.add_to_display(&screen, reading, now() - last_checkpoint); 
+  
 }
 
 void mycallback(int ErrCode, unsigned char Errorbyte)
