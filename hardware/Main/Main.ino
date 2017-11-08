@@ -58,6 +58,9 @@ class Nameable { // Done so that this class can both be a wrapper, and an inheri
     char* getName() {
       return str;
     }
+    void changeName(char* s) {
+      str = s;
+    }
     virtual T* get_underlying_type() {
       return nonInherited;
     };
@@ -340,7 +343,7 @@ class SelectionWheel {//Used to display wheel like selection mechanism
       return option_link[curSelection]->get_underlying_type();
     }
   private:
-    Nameable<T>* option_link[99]; //arbitrary limit
+    Nameable<T>* option_link[10]; //arbitrary limit
     int numOptions;
     int curSelection;
     double towardsChange;
@@ -428,8 +431,9 @@ void halt(Goldelox_Serial_4DLib * screen) {
   reset_text(screen);
 }
 
-int print_bt_response()
-{
+
+//Searches for OK string in the module's output, returns 1 if present - prints to the serial monitor.
+int print_bt_response() {
   int response;
   char out, outprev = '$';
   while (BT.available() > 0) {
@@ -446,6 +450,65 @@ int print_bt_response()
   return response;
 }
 
+//Assuming JSON like message structure, peel out the given field name as a list of chars (top level only)
+char* return_field_from_json_bt(char* field, int size) {
+  char* result = new char[15]; //Arbitrary field limit. //pointer issues mayhaps?
+  char out;
+  boolean recordingName = false;
+  int nameIndex = 0;
+  boolean mismatch = false;
+  int outIndex = 0;
+  boolean recordingResult = false;
+  while (BT.available() > 0) {
+    out = (char)BT.read();
+    if (!recordingName || !recordingResult) {
+      if ((out == '\"')) {
+        recordingName = true;
+      }
+    }
+    else if (recordingName) {
+      if ((nameIndex == size - 1) && (out == '\"')) { // It's a match
+        recordingName = false;
+        recordingResult = true;
+        out = (char)BT.read(); // get next char.
+        while(out != '\"') {
+          out = (char)BT.read(); //advance until we reach the entry we're looking for
+        }
+      }
+      else if ((nameIndex == size - 1) && (out != '\"')) { //It's a match, but not exact
+        mismatch = true;
+      }
+      else if (((nameIndex < size - 1) && (out == '\"')) || (mismatch && (out == '\"'))) { //It's not a match 
+        recordingName = false;
+        mismatch = false;
+      }
+      else if ((nameIndex < size) && (out == field[nameIndex])) { //Check one letter for match
+        nameIndex++;
+      }
+    }
+    else if (recordingResult) {
+      if (out == '\"' || outIndex == 15) {
+        return result; // return collected field
+      }
+      else {
+        result[outIndex] = out;
+        outIndex++;
+      }
+    }
+  }
+  return -1; //failure to find field of given name
+}
+
+//Initialization process: A six step process.
+//1. Set up default settings
+//2. Change name to user friendly name
+//3. Change pairing password to 1234
+//4. Initialize libraries (somewhat fuzzy on this step)
+//5. Set to pairable
+//6. Set to slave.
+//Note that this will require the other bluetooth device (phone or laptop) to do the inquiry and discovery of the CaScale bluetooth module.
+//Once paired, the computer/phone will be given access to the communication ports of the module, and will be able to send data at 38900 Baud.
+//Please note that this is currently unimplemented on the phone side.
 void initialize_bluetooth() {
   int flag = 2;
 
@@ -463,8 +526,7 @@ void initialize_bluetooth() {
   }
   flag = 2;
 
-  //set bt name as "Emar"
-  BT.print("AT+NAME=Emar\r\n");
+  BT.print("AT+NAME=CaScaleAlpha\r\n");
   flag = print_bt_response();
   delay(500);
   if (flag == 1) {
@@ -475,7 +537,7 @@ void initialize_bluetooth() {
   }
   flag = 2;
 
-  //set pin code (should be the same for the master and slave for establishing //connection)
+  //set pin code (should be the same for the master and slave for establishing //connection - is 1234)
   BT.print("AT+PSWD=1234\r\n");
   flag = print_bt_response();
   delay(500);
@@ -516,14 +578,14 @@ void initialize_bluetooth() {
     Serial.print("Failed(5)\n\n");
   }
   flag = 2;
-
+  
   //if you want to set bt to be master, then "AT+ROLE=1"
   //if you want to set bt to be slave, then "AT+ROLE=0"
-  BT.print("AT+ROLE=1\r\n"); //set as master here
+  BT.print("AT+ROLE=0\r\n"); //We want CaScale to be slave to the phone/computer
   flag = print_bt_response();
   delay(500);
   if (flag == 1) {
-    Serial.print("Module role set to master ... Success(6)\n\n");
+    Serial.print("Module role set to slave ... Success(6)\n\n");
   }
   else if (flag == 0) {
     Serial.print("Failed(6)\n\n");
@@ -541,6 +603,12 @@ void setup() {
   BT.begin(38400);
   delay(1000);
   initialize_bluetooth();
+  while (true) { //waits for json string with name field to rename the 'demo' recipe
+    if (BT.available() > 0) {
+      r3.changeName(return_field_from_json_bt("name", 4));
+      break;
+    }
+  }
 
   //For handling errors
   screen.Callback4D = mycallback ;
