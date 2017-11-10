@@ -1,0 +1,27 @@
+//Example Recipe JSON for Recipe used in demo video
+{ 
+    "name":"demo",
+    "steps": [
+        { "type":"weightDoneStep",
+          "goalWeight":7,
+          "info":"7g of Beans!",
+          "tareAfter":true
+        },
+        { "type":"weightDoneStep",
+          "goalWeight":14,
+          "info":"14g Bloom!",
+          "tareAfter":false
+        },
+        { "type":"timeDoneStep",
+          "goalTime":10,
+          "info":"Wait 10s!",
+          "tareAfter":false
+        },
+        { "type":"weightTimeDoneMidStep",
+          "goalWeight":100,
+          "startWeight":14,
+          "goalTime":60,
+          "info":"100g Water for 1m!",
+        } ]
+}
+//Printing "Enjoy!" at the end of recipes is default behavior and thus not required in a field
