@@ -1,0 +1,7 @@
+Welcome to CaScale's example app, this is a react app.
+Steps to run:
+First make sure node(v>6.0) is installed
+install react via instructions on react's website
+cd into example-app
+run command "npm start", this will launch the app in a browser window
+
