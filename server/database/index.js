@@ -94,6 +94,19 @@ function sendNotificationEmail(email) {
 }
 
 /**
+ * Retrieves all recipes as a JSON
+ */
+function getRecipes() {
+    var recipes;
+    var recipesRef = firebase.database().ref('/recipes');
+    recipesRef.on('child_added', function (snapshot, prevChildKey) {
+        recipes = snapshot.val();
+        console.log(recipes);
+        return recipes;
+    });
+}
+
+/**
  * Retrieves the recipe identified by recipeId as a JSON
  */
 function getRecipe(recipeId) {
@@ -101,7 +114,7 @@ function getRecipe(recipeId) {
     var recipeRef = firebase.database().ref('/recipes/' + recipeId);
     recipeRef.once('value').then(function (snapshot) {
         recipe = snapshot.val();
-        return recipe
+        return recipe;
     }).catch(function (error) {
         console.log('Failed to retrieve recipe:', error);
     });
@@ -227,3 +240,32 @@ function addRecipe(recipe) {
 // // Start the server.
 // startListeners();
 // startWeeklyTopPostEmailer();
+// var jsonRecipe = '{ \
+//     "name":"demo", \
+//     "steps": [ \
+//         { "type":"weightDoneStep", \
+//           "goalWeight":7, \
+//           "info":"7g of Beans!", \
+//           "tareAfter":true \
+//         }, \
+//         { "type":"weightDoneStep", \
+//           "goalWeight":14, \
+//           "info":"14g Bloom!", \
+//           "tareAfter":false \
+//         }, \
+//         { "type":"timeDoneStep", \
+//           "goalTime":10, \
+//           "info":"ait 10s!", \
+//           "tareAfter":false \
+//         }, \
+//         { "type":"weightTimeDoneMidStep", \
+//           "goalWeight":100, \
+//           "startWeight":14, \
+//           "goalTime":60, \
+//           "info":"100g Water for 1m!" \
+//         } ] \
+// }'
+// var exampleRecipe = JSON.parse(jsonRecipe);
+// addRecipe(exampleRecipe);
+
+// getRecipes();
