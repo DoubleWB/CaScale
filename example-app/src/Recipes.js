@@ -15,7 +15,7 @@ var jsonRecipe = '{ \
         }, \
         { "type":"timeDoneStep", \
           "goalTime":10, \
-          "info":"Wait 10s!", \
+          "info":"ait 10s!", \
           "tareAfter":false \
         }, \
         { "type":"weightTimeDoneMidStep", \
