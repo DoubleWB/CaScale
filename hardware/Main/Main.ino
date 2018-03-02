@@ -1,9 +1,11 @@
+#include <Util.h>
+#include <SD.h>
 #include "HX711.h"
 #include "Goldelox_Serial_4DLib.h"
 #include "Goldelox_Const4D.h"
 #include "Time.h"
-
 #include<SoftwareSerial.h>
+
 #define RxD 6 // W R O N G Please Update when you plug i in to the real pins!!!
 #define TxD 7 // W R O N G Please Update when you plug i in to the real pins!!!
 #define CALIBRATION_CONSTANT_GRAMS 1090 //Found using LoadCellSetup
@@ -264,6 +266,7 @@ class Recipe: public Nameable<Recipe> { //Collection of up to 10 steps into a re
     }
   private:
     Step* steps[5]; //limiting at 10 steps right now
+    LinkedList<Step> steps2; 
     int currentStep;
     int numSteps;
     int tareBetween[5]; //Same limit
@@ -273,8 +276,8 @@ template <class T>
 class SelectionWheel {//Used to display wheel like selection mechanism
   public:
     SelectionWheel(): numOptions(0), curSelection(0), towardsChange(0) {};
-    void add_option(Nameable<T>* option_pointer) {
-      option_link[numOptions] = option_pointer;
+    void add_option(Nameable<T> option_pointer) {
+      option_link.add(option_pointer);
       numOptions++;
     }
     void add_to_display(Goldelox_Serial_4DLib * screen, double reading) {
@@ -290,11 +293,11 @@ class SelectionWheel {//Used to display wheel like selection mechanism
         sc += numOptions;
       }
 
-      char* first = option_link[fir]->getName();
-      char* sec = option_link[sc]->getName();
-      char* third = option_link[curSelection]->getName(); // guaranteed to be within bounds
-      char* fourth = option_link[(curSelection + 1) % numOptions]->getName();
-      char* fifth = option_link[(curSelection + 2) % numOptions]->getName();
+      char* first = option_link.get(fir).getName();
+      char* sec = option_link.get(sc).getName();
+      char* third = option_link.get(curSelection).getName(); // guaranteed to be within bounds
+      char* fourth = option_link.get((curSelection + 1) % numOptions).getName();
+      char* fifth = option_link.get((curSelection + 2) % numOptions).getName();
 
       screen->txt_Height(3);
       screen->txt_Width(3);
@@ -340,10 +343,10 @@ class SelectionWheel {//Used to display wheel like selection mechanism
       reset_text(screen);
     }
     T* select() {
-      return option_link[curSelection]->get_underlying_type();
+      return option_link.get(curSelection).get_underlying_type();
     }
   private:
-    Nameable<T>* option_link[10]; //arbitrary limit
+    LinkedList<Nameable<T>> option_link; //arbitrary limit
     int numOptions;
     int curSelection;
     double towardsChange;
@@ -453,6 +456,7 @@ int print_bt_response() {
 //Assuming JSON like message structure, peel out the given field name as a list of chars (top level only)
 char* return_field_from_json_bt(char* field, int size) {
   char* result = new char[15]; //Arbitrary field limit. //pointer issues mayhaps?
+  CharList result2;
   char out;
   boolean recordingName = false;
   int nameIndex = 0;
@@ -651,12 +655,12 @@ void setup() {
   state = ScaleState(selMode);
 
   //Set up Selection Wheels
-  mode_selector.add_option(&yR);
-  mode_selector.add_option(&nR);
+  mode_selector.add_option(yR);
+  mode_selector.add_option(nR);
 
-  recipe_selector.add_option(&r1);
-  recipe_selector.add_option(&r2);
-  recipe_selector.add_option(&r3);
+  recipe_selector.add_option(r1);
+  recipe_selector.add_option(r2);
+  recipe_selector.add_option(r3);
 
   //Move to logic Loop
   delay(1500); // Make people FEEL like it's loading haha

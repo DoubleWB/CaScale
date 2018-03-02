@@ -141,6 +141,7 @@ class CharList {
         out[index] = characters.get(index);
       }
       out[tempLen] = '\0'; //Make null terminated string appropriately
+      return out;
     }
     CharList operator+ (const CharList& c) {
       int otherLen = c.length();
